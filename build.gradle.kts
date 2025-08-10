@@ -241,12 +241,8 @@ jib {
                 architecture = "amd64"
                 os = "linux"
             }
-            platform {
-                architecture = "arm64"
-                os = "linux"
-            }
         }
-        image = "gcr.io/distroless/java17-debian11"
+        image = "eclipse-temurin:17-jre-alpine"
     }
     container {
         ports = listOf("8080")

@@ -1,0 +1,57 @@
+name: Continuous Delivery > Docker build and deployment triggers
+
+on:
+  push:
+    branches: [ 'master' ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/lutonite/mock-oauth2-server
+
+jobs:
+  build-docker:
+    name: Build and attest Docker image with JIB
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Java env 🏗
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          check-latest: true
+
+      - name: Setup Gradle 🪓
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image 🐳
+        id: push
+        run: |
+          ./gradlew :jib --image="${{ env.IMAGE_NAME }}:latest" -Djib.console=plain
+          echo "digest=$(cat build/jib-image.digest)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
